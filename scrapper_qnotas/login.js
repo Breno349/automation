@@ -1,3 +1,5 @@
+const { formatFirstLoginMessage } = require('./formatMessage.js');
+
 async function insertLogin(page,user,pass){
     try {
 
@@ -161,7 +163,7 @@ async function get_user_content(page,user,disciplinas){
             }
 
             return {
-                disciplina: disciplina.descricao,
+                nome: disciplina.descricao,
                 professor: disciplina.professor,
                 nota: disciplina.avaliacao? disciplina.avaliacao : 0,
                 lancados: lancados,
@@ -191,15 +193,33 @@ async function get_user_content(page,user,disciplinas){
     }
 }
 
-async function get_comparation(pool,user_content){
+//https://academico.ifes.edu.br/webapp/api/comum/foto-do-perfil
+
+
+async function get_comparation(pool,user,user_content){
     try {
 
-        console.log(user_content)
+        const mensagens = []
+        //console.log(JSON.stringify(user_content,null,0))
+
+        const { rows:users } = await pool.query(`SELECT * FROM users_qnotas_save WHERE user_id = '${user.user_id}';`);
+        if(users.length <= 0){
+            // quando é a primeira vez, o usuário recebe todas as matérias que ele está cadastrados
+            
+            mensagens.push({
+                to: user.user_chatid,
+                tipo: "telegram",
+                content: formatFirstLoginMessage(user_content)
+            })
+        } else {
+            const user = users[0];
+            console.log(users)
+        }
 
         return {
             sucess: true,
             message: 'get_comparation: comparação realizada com sucesso',
-            data: ''
+            mensagens: mensagens
         }
 
     } catch (erro) {

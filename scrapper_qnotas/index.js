@@ -1,11 +1,12 @@
 require('dotenv').config({quiet:true});
 const { Pool } = require('pg');
 const { insertLogin,get_user,get_periodos,get_disciplinas,get_notas,get_user_content,get_comparation } = require('./login.js');
+const { sendTelegramMessage,checkBotStatus } = require('./telegram.js');
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteer.use(StealthPlugin());
 
-async function scrapper(page,pool,login,password){
+async function scrapper(page,pool,user,login,password){
     try {
 
         const user_login = await insertLogin(page,login,password);
@@ -34,7 +35,7 @@ async function scrapper(page,pool,login,password){
             return user_content;
         }
 
-        const comparar = await get_comparation(pool,user_content.data)
+        const comparar = await get_comparation(pool,user,user_content.data)
         if(comparar.sucess == false){
             return comparar;
         }
@@ -49,11 +50,43 @@ async function scrapper(page,pool,login,password){
     }
 }
 
+async function send_all(msgs){
+    try {
+
+        for(const msg of msgs){
+            if(msg.tipo == 'telegram'){
+                await sendTelegramMessage(msg.content, msg.to)
+            }
+        }
+
+        return {
+            sucess: true,
+            message: 'send_all: mensagens enviadas'
+        }
+
+    } catch (erro){
+        return {
+            sucess: false,
+            message: 'send_all: '+erro.message
+        }
+    }
+}
+
 async function init(){
     let browser;
     let pool;
+    let boot;
 
     try {
+        await checkBotStatus().then(async (status) => {
+            boot = status.success;
+            if(status.success){
+                console.log(status.message)
+            } else {
+                console.log(status.message)
+            }
+        })
+
         pool = new Pool({
             host: String(process.env.DB_HOST),
             user: String(process.env.DB_USERNAME),
@@ -61,6 +94,7 @@ async function init(){
             database: String(process.env.DB_NAME),
             port: process.env.DB_PORT
         });
+    
         browser = await puppeteer.launch({
             headless: true,
             args: [
@@ -71,14 +105,22 @@ async function init(){
         });
 
         const { rows:users } = await pool.query('SELECT * FROM users_qnotas');
+        if(users.length == 0){
+            console.log("Não há usuários.")
+        }
         for(const user of users){
             const page = await browser.newPage();
-            const user_info = await scrapper(page,pool,user.user_login,user.user_senha);
+            const user_info = await scrapper(page,pool,user,user.user_login,user.user_senha);
             if(user_info.sucess == false){
                 console.log(user_info.message)
             }
-            console.log('Usuário: '+user.user_login+' - '+user_info.message)
+            console.log(`mensagens associadas à ${user.user_id}: ${user_info.mensagens.length}`)
             await page.close();
+            // enviando mensagens...
+            const sended = await send_all( user_info.mensagens )
+            if(sended.sucess == false){
+                console.log(sended.message)
+            }
         }
 
     } catch (erro){
