@@ -30,7 +30,6 @@ async function insertLogin(page,user,pass){
         }
     }
 }
-
 async function get_user(page){
     try {
 
@@ -52,7 +51,6 @@ async function get_user(page){
         }
     }
 }
-
 async function get_periodos(page){
     try {
 
@@ -74,7 +72,6 @@ async function get_periodos(page){
         }
     }
 }
-
 async function get_disciplinas(page,periodo){
     try {
 
@@ -96,7 +93,6 @@ async function get_disciplinas(page,periodo){
         }
     }
 }
-
 async function get_notas(page,user,disciplina){
     try {
 
@@ -127,7 +123,6 @@ async function get_notas(page,user,disciplina){
         }
     }
 }
-
 function extrair_peso(expressao) {
   const expressaoLimpa = expressao.replace(/['"()]/g, '');
   const regex = /([A-Z]+[0-9]+)(?:\*([0-9.]+))?/gi;
@@ -140,7 +135,6 @@ function extrair_peso(expressao) {
   }
   return resultado;
 }
-
 async function get_user_content(page,user,disciplinas){
     try {
         const notas_promises = disciplinas.map(async (disciplina) => {
@@ -148,7 +142,7 @@ async function get_user_content(page,user,disciplinas){
             const avaliacoes = []
             let lancados = 0;
 
-            const notas = await get_notas(page,user,disciplina);
+            const notas = await get_notas(page,user.data,disciplina);
             if(notas.sucess == false){
                 console.log(notas.message)
                 return
@@ -177,10 +171,17 @@ async function get_user_content(page,user,disciplinas){
         });
         const notas = await Promise.all(notas_promises);
 
+        const info = {
+            nome: user.data.nomePessoa,
+            curso: user.data.descCurso,
+            periodo: `${user.periodo.anoLetivo}/${user.periodo.periodoLetivo}`,
+            disciplinas: notas
+        }
+
         return {
             sucess: true,
             message: 'get_user_content: dados do usuário obtidos com sucesso',
-            data: notas
+            data: info
         }
     } catch (erro) {
         return {
@@ -190,11 +191,32 @@ async function get_user_content(page,user,disciplinas){
     }
 }
 
+async function get_comparation(pool,user_content){
+    try {
+
+        console.log(user_content)
+
+        return {
+            sucess: true,
+            message: 'get_comparation: comparação realizada com sucesso',
+            data: ''
+        }
+
+    } catch (erro) {
+        return {
+            sucess: false,
+            message: 'get_comparation: '+erro.message
+        }
+    }
+}
+
+
 module.exports = {
     insertLogin,
     get_user,
     get_periodos,
     get_disciplinas,
     get_notas,
-    get_user_content
+    get_user_content,
+    get_comparation
 }

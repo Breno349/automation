@@ -1,6 +1,6 @@
 require('dotenv').config({quiet:true});
 const { Pool } = require('pg');
-const { insertLogin,get_user,get_periodos,get_disciplinas,get_notas,get_user_content } = require('./login.js');
+const { insertLogin,get_user,get_periodos,get_disciplinas,get_notas,get_user_content,get_comparation } = require('./login.js');
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteer.use(StealthPlugin());
@@ -22,23 +22,24 @@ async function scrapper(page,pool,login,password){
         if(user_periodos.sucess == false){
             return user_periodos;
         }
+        user_info.periodo = user_periodos.data[0];
 
-        const user_diciplinas = await get_disciplinas(page,user_periodos.data[0]);
+        const user_diciplinas = await get_disciplinas(page,user_info.periodo);
         if(user_diciplinas.sucess == false){
             return user_diciplinas;
         }
 
-        const user_content = await get_user_content(page,user_info.data,user_diciplinas.data);
+        const user_content = await get_user_content(page,user_info,user_diciplinas.data);
         if(user_content.sucess == false){
             return user_content;
         }
 
-        //console.log('user_content: '+JSON.stringify(user_content.data,null,4))
-        const info = JSON.stringify(user_content.data);
-        const base = Buffer.from(info, 'utf-8').toString('base64');
-        console.log('user_content: '+base)
+        const comparar = await get_comparation(pool,user_content.data)
+        if(comparar.sucess == false){
+            return comparar;
+        }
 
-        return user_content;
+        return comparar;
 
     } catch (erro){
         return {
@@ -76,6 +77,7 @@ async function init(){
             if(user_info.sucess == false){
                 console.log(user_info.message)
             }
+            console.log('Usuário: '+user.user_login+' - '+user_info.message)
             await page.close();
         }
 
