@@ -4,7 +4,8 @@
   "description": "Agente que verifica modicações em suas notas no QAcadêmico",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
   },
   "repository": {
     "type": "git",
@@ -20,6 +21,7 @@
   },
   "homepage": "https://github.com/Breno349/automation#readme",
   "dependencies": {
+    "dotenv": "^17.4.2",
     "fs": "^0.0.1-security",
     "pg": "^8.22.0",
     "puppeteer": "^3.3.0",
