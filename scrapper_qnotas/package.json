@@ -1,0 +1,30 @@
+{
+  "name": "scrapper_qnotas",
+  "version": "1.0.0",
+  "description": "Agente que verifica modicações em suas notas no QAcadêmico",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Breno349/automation.git"
+  },
+  "keywords": [
+    "QAcademico"
+  ],
+  "author": "Breno Serra",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Breno349/automation/issues"
+  },
+  "homepage": "https://github.com/Breno349/automation#readme",
+  "dependencies": {
+    "fs": "^0.0.1-security",
+    "pg": "^8.22.0",
+    "puppeteer": "^3.3.0",
+    "puppeteer-core": "^3.3.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}
