@@ -23,4 +23,8 @@ function escapeMarkdownV2(texto) {
     return String(texto).replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
 }
 
-module.exports = { formatFirstLoginMessage };
+function escapeMarkdownV2Code(texto) {
+    return String(texto).replace(/([`\\])/g, '\\$1');
+}
+
+module.exports = { formatFirstLoginMessage,escapeMarkdownV2,escapeMarkdownV2Code };

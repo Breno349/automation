@@ -1,4 +1,4 @@
-const { formatFirstLoginMessage } = require('./formatMessage.js');
+const { formatFirstLoginMessage,escapeMarkdownV2,escapeMarkdownV2Code } = require('./formatMessage.js');
 
 async function insertLogin(page,user,pass){
     try {
@@ -104,7 +104,7 @@ async function get_notas(page,user,disciplina){
             return data;
         }, `https://academico.ifes.edu.br/webapp/api/diarios/aluno/diarios/${disciplina.idDiario}/avaliacoes?idMatricula=${user.idMatricula}`);
         
-        let pesos;
+        let pesos = {};
         for(const nota of dados){
             if(nota.descricao === 'Média Nota do Semestre'){
                 pesos = extrair_peso(nota.formula? nota.formula : '');
@@ -202,7 +202,9 @@ async function get_comparation(pool,user,user_content){
         const mensagens = []
         //console.log(JSON.stringify(user_content,null,0))
 
-        const { rows:users } = await pool.query(`SELECT * FROM users_qnotas_save WHERE user_id = '${user.user_id}';`);
+        const { rows: users } = await pool.query(`SELECT * FROM users_qnotas_save WHERE user_id = $1 AND user_periodo = $2`,
+            [user.user_id, user_content.periodo]
+        );
         if(users.length <= 0){
             // quando é a primeira vez, o usuário recebe todas as matérias que ele está cadastrados
             
@@ -211,9 +213,104 @@ async function get_comparation(pool,user,user_content){
                 tipo: "telegram",
                 content: formatFirstLoginMessage(user_content)
             })
+
+            const user_content_json = JSON.stringify(user_content,null,0);
+            const data = Buffer.from(user_content_json,'utf-8').toString('base64');
+
+            await pool.query(`INSERT INTO users_qnotas_save (user_id, user_periodo, user_data) VALUES ($1, $2, $3)`,
+                [user.user_id, user_content.periodo, data]
+            );
+            console.log("ADDED USER: "+user.user_name)
         } else {
-            const user = users[0];
-            console.log(users)
+            const user0 = users[0];
+            const load_content = JSON.parse(Buffer.from(user0.user_data, 'base64').toString('utf-8'));
+            // verificar alterações
+            //console.log(JSON.stringify(load_content,null,10))
+            for(const nv_disc of user_content.disciplinas){
+    const disc = load_content.disciplinas.find(item => item.nome === nv_disc.nome);
+    if(disc == undefined){
+        // não existe
+        mensagens.push({
+            to: user.user_chatid,
+            tipo:'telegram',
+            content:
+                `📚 *Nova matéria adicionada\\!*\n\n` +
+                `📘 Disciplina: \`${escapeMarkdownV2Code(nv_disc.nome)}\`\n` +
+                `👤 Professor: *${escapeMarkdownV2(nv_disc.professor)}*`
+        })
+    } else {
+        // existe a disciplina
+        for(const nv_pv of nv_disc.avaliacoes){
+            const pv = disc.avaliacoes.find(item => item.nome === nv_pv.nome)
+            if(pv == undefined){
+                // prova não existia
+                mensagens.push({
+                    to: user.user_chatid,
+                    tipo:'telegram',
+                    content:
+                        `📝 *Nova avaliação lançada\\!*\n\n` +
+                        `📘 Disciplina: \`${escapeMarkdownV2Code(nv_disc.nome)}\`\n` +
+                        `📄 Avaliação: \`${escapeMarkdownV2Code(nv_pv.nome)}\`\n` +
+                        `📊 Nota: ${nv_pv.max > 0
+                            ? `||${escapeMarkdownV2(nv_pv.nota)}||/${escapeMarkdownV2(nv_pv.max)}`
+                            : '_não lançado_'}`
+                })
+            } else {
+                // prova existe
+                if(nv_pv.nota != pv.nota){
+                    // a nota mudou
+                    if(nv_pv.nota > pv.nota){
+                        // aumentou
+                        mensagens.push({
+                            to: user.user_chatid,
+                            tipo:'telegram',
+                            content:
+                                `📈 *Nota atualizada\\!*\n\n` +
+                                `📘 Disciplina: \`${escapeMarkdownV2Code(nv_disc.nome)}\`\n` +
+                                `📄 Avaliação: \`${escapeMarkdownV2Code(nv_pv.nome)}\`\n` +
+                                `📊 Nota: ||${escapeMarkdownV2(pv.nota)}|| ➡️ ||${escapeMarkdownV2(nv_pv.nota)}||/${escapeMarkdownV2(nv_pv.max)}\n` +
+                                `✅ Total lançado: ||${escapeMarkdownV2(nv_disc.nota)}||/${escapeMarkdownV2(nv_disc.lancados)}`
+                        })
+                    } else {
+                        // diminuiu
+                        mensagens.push({
+                            to: user.user_chatid,
+                            tipo:'telegram',
+                            content:
+                                `📉 *Nota atualizada\\!*\n\n` +
+                                `📘 Disciplina: \`${escapeMarkdownV2Code(nv_disc.nome)}\`\n` +
+                                `📄 Avaliação: \`${escapeMarkdownV2Code(nv_pv.nome)}\`\n` +
+                                `📊 Nota: ||${escapeMarkdownV2(pv.nota)}|| ➡️ ||${escapeMarkdownV2(nv_pv.nota)}||/${escapeMarkdownV2(nv_pv.max)}\n` +
+                                `✅ Total lançado: ||${escapeMarkdownV2(nv_disc.nota)}||/${escapeMarkdownV2(nv_disc.lancados)}`
+                        })
+                    }
+                }
+                if(nv_pv.max != pv.max){
+                    // o máximo mudou
+                    mensagens.push({
+                        to: user.user_chatid,
+                        tipo:'telegram',
+                        content:
+                            `🔄 *Valor máximo da avaliação alterado\\!*\n\n` +
+                            `📘 Disciplina: \`${escapeMarkdownV2Code(nv_disc.nome)}\`\n` +
+                            `📄 Avaliação: \`${escapeMarkdownV2Code(nv_pv.nome)}\`\n` +
+                            `📊 Máximo: ${escapeMarkdownV2(pv.max)} ➡️ ${escapeMarkdownV2(nv_pv.max)}\n` +
+                            `✅ Total lançado: ||${escapeMarkdownV2(nv_disc.nota)}||/${escapeMarkdownV2(nv_disc.lancados)}`
+                    })
+                }
+            }
+        }
+    }
+}
+
+            const user_content_json = JSON.stringify(user_content,null,0);
+            //console.log('\n\nSALVO:'+user_content_json+'\n\n')
+            //console.log('\n\CATRREGADO:'+JSON.stringify(load_content,null,0)+'\n\n')
+            const data = Buffer.from(user_content_json,'utf-8').toString('base64');
+            await pool.query(`UPDATE users_qnotas_save SET user_data = $1 WHERE user_id = $2 AND user_periodo = $3`,
+                [data, user.user_id, user_content.periodo]
+            );
+            console.log("USER UPDATED")
         }
 
         return {
