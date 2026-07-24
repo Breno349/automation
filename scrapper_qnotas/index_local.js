@@ -57,7 +57,6 @@ async function send_all(msgs){
         for(const msg of msgs){
             if(msg.tipo == 'telegram'){
                 await sendTelegramMessage(msg.content, msg.to)
-                //console.log(JSON.stringify(msg,null,6))
             }
         }
 
