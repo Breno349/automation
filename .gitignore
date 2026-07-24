@@ -1,5 +1,6 @@
 */node_modules/
-.env
+scrapper_notas/.env
+backup_database
 scrapper_qnotas/example.json
 scrapper_qnotas/converte_json.py
 .vscode
