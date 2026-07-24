@@ -24,7 +24,7 @@ async function scrapper(page,pool,user,login,password){
         if(user_periodos.sucess == false){
             return user_periodos;
         }
-        user_info.periodo = user_periodos.data[1];
+        user_info.periodo = user_periodos.data[0];
 
         const user_diciplinas = await get_disciplinas(page,user_info.periodo);
         if(user_diciplinas.sucess == false){
