@@ -1,5 +1,5 @@
 */node_modules/
-scrapper_notas/.env
+scrapper_qnotas/.env
 backup_database
 scrapper_qnotas/example.json
 scrapper_qnotas/converte_json.py
